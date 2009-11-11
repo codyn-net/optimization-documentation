@@ -1,0 +1,587 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{fullpage}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{listings}
+
+\usepackage{apacite}
+
+\title{Optimization Framework Conceptual Overview}
+
+\lstset{
+basicstyle=\ttfamily\footnotesize,
+showspaces=false,
+showtabs=false,
+showstringspaces=false
+}
+
+\linespread{1.5}
+\begin{document}
+
+\maketitle
+
+\section{Conceptual Overview}
+Figure \ref{fig:overview} shows a schematic overview of the optimization
+framework. There are three distinct layers (user, server and workstation)
+in the system. The \textit{user} layer runs the actual optimization process
+which will produce tasks that have to be evaluated. These tasks are passed
+to the \textit{server} layer which queues them in a task queue. The 
+\textit{server} acts as a central hub to distribute any tasks it receives
+to the available workstations. A \textit{workstation} in turn receives a 
+single task from the \textit{server} and executes it. When the task has been
+evaluated, the result is sent back to the \textit{user} through the
+\textit{server} layer. The different layers can run on a single PC, but can 
+also be placed on different networked PCs. See section \ref{sec:implementation}
+for more information on the implementation of the different layers and
+communication protocols.
+
+The overall concept of the framework is such that no specific
+restrictions are placed on the type of optimization algorithm or the manner
+in which a task has to be evaluated. Therefore, the framework can easily be
+used for many different and concurrent tasks.
+
+\begin{figure}[h!tb]
+	\centering
+	\includegraphics[width=\textwidth]{images/overview}
+	\caption{Schematic overview of the optimization framework architecture}
+	\label{fig:overview}
+\end{figure}
+
+\subsection{User Layer}
+The user layer represents the front-end layer which is run by a user of the
+system. This layer is responsible for running the optimization algorithm. The
+algorithm produces tasks to be evaluated. As can be seen in figure
+\ref{fig:overview}, each optimization, run at the user layer, is encapsulated
+in a \textit{Job} process. The job drives the optimization, sends tasks
+to the \textit{server} layer, and feeds retrieved results back into the 
+optimizer.
+
+The optimizer consists of a population (of tasks) that need to
+be executed, an optional function combining a multi-objective fitness evaluation
+into a single fitness value, and a data storage to store the results of the
+optimization. The optimizer population is a set of tasks that can be executed
+independently. For example, in Genetic Algorithms this would be a single
+generation of individuals. These represent the set of tasks that can be
+distributed at the \textit{server} layer. The fitness function represents
+a mathematical expression that can be used to transform multiple objectives
+into a single fitness value, used by the optimizer.
+
+A description of the task that is sent to the \textit{server} layer
+is given in table \ref{tab:task_message}. Once a task is executed, a result
+message as described in table \ref{tab:result_message} is sent back to 
+the \textit{user} layer.
+
+\begin{table}[h!tb]\caption{Task Message}\label{tab:task_message}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{3cm} p{10cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		Id & A unique task identifier \\
+		Dispatcher & The dispatcher with which to evaluate the ask \\
+		Parameters & A \{\textit{name} $\rightarrow$ \textit{value}\} dictionary of
+			         parameters to be evaluated \\
+		Settings & A \{\textit{name} $\rightarrow$ \textit{value}\} dictionary of
+			       settings to be passed to the dispatcher \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{table}[h!tb]\caption{Result Message}\label{tab:result_message}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{3cm} p{10cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		Id & The unique task identifier \\
+		Status & Whether the execution was successful or not \\
+		Fitness & A \{\textit{name} $\rightarrow$ \textit{value}\} dictionary
+		          of fitness values \\
+		Data & A \{\textit{name} $\rightarrow$ \textit{value}\} dictionary
+		          of additional, custom data to be stored with this task/solution \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsection{Server Layer}
+The server layer consists of a single process which acts as a distribution
+center for tasks to be evaluated. This layer is used to allow multiple 
+optimization processes to be run, while sharing the workstation resources that
+are currently available. The tasks are scheduled fairly with respect to estimated
+execution time and a task priority. The server automatically discovers new
+workstations as they come online through a simple discovery protocol. When
+new tasks are received from the \textit{user} layer, it schedules these tasks
+(according to their priority) onto a task queue. Whenever a workstation becomes
+available, the task is send to this workstation to be executed. The workstation
+then sends the result back to the server, which in turn relays it back to the
+\textit{user} layer. Details of the implementation and the used communication
+protocols will be discussed in section \ref{sec:implementation}.
+
+\subsection{Workstation Layer}
+The \textit{workstation} layer is responsible for executing a single task, and
+sending the result back to the server layer. Each task is received from
+the \textit{server} layer with the task information as specified in table
+\ref{tab:task_message}. The worker process then resolves a dispatcher process
+from the task description that is to be used to evaluate the task. When the
+correct dispatcher is located, this dispatcher will be executed with 
+the task that has to be evaluated. From the dispatcher, the worker will
+receive a result in terms of fitness, which it then relays back to the
+\textit{server} layer.
+
+\section{Implementation}\label{sec:implementation}
+This section will give a short overview of the implementation of various parts
+of the framework. For more detailed information, see the API documentation.
+
+\subsection{Communication}
+All communication in the framework is implemented using google protobuf. This
+is a small, strictly typed, object serialization/deserialization library
+developed and released under the BSD open source license by Google. This library
+was chosen because it is fast, object oriented, strictly typed and
+well maintained. Messages in the framework are mainly send over TCP/IP, but 
+UNIX domain sockets are also supported.
+
+\subsection{Software}
+There are two major parts of software developed for the framework. The first
+part is the lower level backbone of the framework consisting of the 
+\textit{server} and \textit{workstation} layers. These layers are implemented in
+C++. Common functionality reused in the different components of these layers
+is provided in a separate C++ library. The developed applications are:
+
+\begin{itemize}
+	\item master (\textit{server} layer): the master distribution process which
+	distributes task to workstations
+	\item worker (\textit{workstation} layer): the process that accepts tasks
+	and executes the appropriate dispatcher
+	\item dispatcher (\textit{workstation} layer): the dispatchers that 
+	evaluate a specific task
+\end{itemize}
+
+The \textit{user} layer on the other hand has been implemented in C\# (using
+``\textit{mono}'' the open source version of the .NET framework). It consists of a
+.NET library containing classes with which optimizers can be easily implemented,
+and an application which can run jobs specified using XML (see appendix
+\ref{appendix:xml}). The C\# language
+was chosen for this layer because it is easy to learn, modern, powerful,
+cross-platform and reduces the time needed to implement new optimization
+algorithms.
+
+\subsection{Security}
+To support a multi-user environment, the framework can be configured such that
+dispatcher processes will be executed under user privileges. When this
+functionality is enabled, the \textit{worker} will execute a separate process
+that authenticates the task, and if authenticated, executes the dispatcher with
+the privileges of the owner of the task. The authentication is based on
+a challenge/response mechanisms such that the authentication key of the user
+is always send encoded over the network. After successful authentication, the
+credentials are confirmed with the permissions to execute the dispatcher
+process in question, before dropping to the user credentials. As such, even
+if the key would be retrieved, only executables that belong to the user
+to whom the key was given can be executed.
+
+\section{Applications and Tools}
+The following section will describe the applications and tools distributed with
+the optimization framework.
+
+\subsection{optimaster}\label{app:optimaster}
+The \verb!optimaster! application represents the server layer of the framework. It
+acts as a distribution center for optimization process. You can specify some
+options for the \verb!optimaster! using a configuration file in \verb!/etc/optimaster.conf!.
+An example configuration file is present in
+\verb!/usr/share/optimaster/optimaster.conf.ex!. The available configuration
+settings are listed in table \ref{tab:optimaster_configuration}.
+
+\begin{table}[h!tb]\caption{optimaster Configuration}\label{tab:optimaster_configuration}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{4cm} p{10cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{discovery namespace} & the discovery namespace identifies
+		                               to which discovery namespace the
+		                               \verb!optimaster! belongs. You can use this
+		                               namespace to separate different
+		                               \verb!optimaster! and \verb!optiworker! processes.
+		                               By default, the \verb!optimaster! will set
+		                               the namespace to the user name of the
+		                               current user. \\
+		\textit{discovery address} & the address (IP:port) on which to
+		                             broadcast and listen for discovery
+		                             messages (usually a multicast address). \\
+		\textit{listen address} & the address (IP:port) on which to
+		                          listen for incoming optimizer connections. \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsection{optiworker}\label{app:optiworker}
+The \verb!optiworker! application represents the workstation layer of the framework. It
+receives single tasks from the \verb!optimaster! and executes them according to the
+task description. The \verb!optiworker! can run in two modes, \textit{normal} mode
+and \textit{token} mode. In \textit{normal} mode, the \verb!optiworker! will launch
+dispatcher processes directly and under the same privileges as the \verb!optiworker!
+process. In \textit{token} mode, a token system will be used to securely
+identify users to which a certain task belongs. In this mode, the
+\verb!optirooter! application will be used to launch the dispatcher process.
+See section \ref{app:optirooter} for more information.
+
+You can specify some
+options for the \verb!optiworker! using a configuration file in \verb!/etc/optiworker.conf!.
+An example configuration file is present in
+\verb!/usr/share/optiworker/optiworker.conf.ex!. The available configuration
+settings are listed in table \ref{tab:optiworker_configuration}.
+
+\begin{table}[h!tb]\caption{optiworker Configuration}\label{tab:optiworker_configuration}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{4cm} p{10cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{discovery namespace} & the discovery namespace identifies
+		                               to which discovery namespace the
+		                               \verb!optimaster! belongs. \\
+		\textit{discovery address} & the address (IP:port) on which to
+		                             broadcast and listen for discovery
+		                             messages (usually a multicast address). \\
+		\textit{use tokens} & whether or not to use the token security system. \\
+		\textit{dispatcher priority} & the linux priority level at which to
+		                               run the dispatcher processes (see the
+		                               `nice` command for more information). \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsection{optirunner}\label{app:optirunner}
+The optirunner application is the most important application for the end user.
+This application will run the actual optimization process and will be started
+by the user. It is possible to use the optimization API to write your own
+application that communicates directly with the \verb!optimaster!, but this
+should be rarely needed.
+
+The default usage of \verb!optirunner! is by specifying a description of your job
+in XML and calling \verb!optirunner! to execute this job. A description of
+this XML job representation is given in the next section. Thereafter, a short
+explanation of how you can use your own custom optimization algorithms with
+optirunner is given.
+
+\subsubsection{XML description}
+The XML description of a job consists of a few distinct sections. The basic
+element is \verb!job!:
+
+\begin{lstlisting}[language=xml]
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<job name="{NAME}">
+  <priority>{PRIORITY}</priority>
+  <timeout>{TIMEOUT}</timeout>
+  <!-- Rest -->
+</job>
+\end{lstlisting}
+
+A job should always have a name. The name is used to generate the file name
+in which results are written. The priority and timeout elements are optional
+and specify respectively the priority level at which you want to run your job
+(defaults to 1) and a timeout indicating the maximum allowed time for a task
+to run. The timeout is a fail-safe for the master so that it can discard tasks
+that are running too long (for example if you have to make use of third party
+software that is buggy). The remainder of the job description consists of
+the \verb!optimizer!, \verb!boundaries!, \verb!parameters! and \verb!dispatcher!
+elements defined inside the job element.
+
+The \verb!optimizer! element describes the type of optimization algorithm to
+use and any settings that correspond to that particular optimization algorithm.
+For example:
+
+\begin{lstlisting}[language=xml]
+  <optimizer name="{NAME}">
+    <setting name="{SETTING 1}">{VALUE}</setting>
+    <setting name="{SETTING 2}">{VALUE}</setting>
+  </optimizer>
+\end{lstlisting}
+
+The name attribute identifies the optimization algorithm (for example 'pso').
+The settings set settings specific to the optimization algorithm. When you use
+\textit{pso}, these settings include the maximum allowed particle velocity
+and different coefficients used in the algorithm. There are two settings
+available for all algorithms: max-iterations and population-size, respectively
+setting the maximum number of iterations to run and the size of the solution
+population. Although these setting are common to most optimization algorithms,
+they might not apply to all. See optimization algorithm specific documentation
+for information on their specific settings.
+
+The \verb!boundaries! element specifies a set of boundary definitions (minimum
+and maximum values) which are used in the \verb!parameters! element. An example
+boundaries definition:
+
+\begin{lstlisting}[language=xml]
+  <boundaries>
+    <boundary name="{BOUNDARY 1}" min="{VALUE}" max="{VALUE}"/>
+    <boundary name="{BOUNDARY 2}" min="{VALUE}" max="{VALUE}"/>
+  </boundaries>
+\end{lstlisting}
+
+Each boundary is named, and has a minimum and a maximum value. The name is
+used in the parameter definition to reference a specific boundary.
+
+The \verb!parameters! element specifies the set of open parameters to be
+optimized. An example definition:
+
+\begin{lstlisting}[language=xml]
+  <parameters>
+    <parameter name="{BOUNDARY 1}" boundary="{BOUNDARY NAME}"/>
+    <parameter name="{BOUNDARY 2}" boundary="{BOUNDARY NAME}"/>
+  </parameters>
+\end{lstlisting}
+
+Each parameter is named, and specifies by which boundary its value is bound.
+
+The \verb!dispatcher! element describes the dispatcher and dispatcher settings
+to be used to evaluate a solution generated by the optimization algorithm. The
+specific settings depend on the type of dispatcher used. An example definition:
+
+\begin{lstlisting}[language=xml]
+  <dispatcher name="{NAME}">
+    <setting name="{SETTING 1}">{VALUE}</setting>
+    <setting name="{SETTING 2}">{VALUE}</setting>
+  </dispatcher>
+\end{lstlisting}
+
+The dispatcher name can be either a simple name, in which case it will be
+looked up in the system directory for optimization dispatchers (this is where
+system dispatchers such as the webots dispatcher are installed). On the other
+hand, you can also specify an absolute path to a dispatcher executable here.
+
+The settings are specific per dispatcher, and are documented separately. Note
+that any number of additional settings can be specified here, custom to your
+specific job. For instance, using the webots dispatcher, you can retrieve any
+additional settings in your webots controller, and configure the simulation
+environment accordingly.
+
+The last element is the \verb!fitness! element. This can be used if you have
+multiple objectives in your fitness function. By default, if you do not specify
+this element, the first fitness value the dispatcher returns is used.
+Dispatchers can return multiple fitness values if there are multiple objectives
+to be used for optimization. In this case, it can be useful to be able to 
+define a mathematical expression combining these different values in a single
+fitness value. As such, you can adjust the way you combine these different
+objectives without having to modify the dispatcher. An example fitness
+description:
+
+\begin{lstlisting}[language=xml]
+  <fitness>
+    <expression>{EXPRESSION}</expression>
+
+    <variable name="{VARIABLE 1}">{EXPRESSION}</variable>
+    <variable name="{VARIABLE 2}">{EXPRESSION}</variable>
+  </fitness>
+\end{lstlisting}
+
+The \verb!expression! element in the \verb!fitness! element describes the main
+fitness expression to be evaluated. This expression can be a mathematical
+expression consistent with most programming languages syntax (operators and
+a small set of functions such as log, sin, etc.). The dispatcher will return
+a dictionary (name $\rightarrow$ fitness) of fitness values, and you can refer
+to such a value by using the name in the expression.
+
+Additionally, you can add any number of variables in the fitness description
+containing a mathematical expression. You can refer to these variables from
+any expression as well. This can be convenient to specify some weights or
+constants which you can later modify easily.
+
+\subsection{Optimization Algorithms}
+The optimization algorithms currently implemented are:
+
+\begin{itemize}
+	\item Particle Swarm Optimization (PSO)
+	\item Adaptive Diversity Particle Swarm Optimization (ADPSO)
+	\item Genetic Algorithms (GA)
+	\item Simultaneous Perturbation Stochastic Approximation (SPSA)
+	\item Systematic Search (Systematic)
+\end{itemize}
+
+These are available from the optimizers-sharp library. When using
+\verb!optirunner!, you can list the available optimization algorithms and
+their settings using the \verb!-l! command line option.
+
+\subsubsection{PSO}
+The particle swarm optimization is a very elegant, simple and fairly recent
+optimization algorithm \cite{kennedy_particle_1995,clerc_pse_2002}. It is 
+loosely based on the notion of swarm/flocking behavior. The basic algorithm
+behind the optimization can be described by:
+
+\begin{eqnarray*}
+	v_{ij}(t + 1) & = & \chi (v_{ij}(t) + R_1 \varphi_1 (P_{ij} - x_{ij}(t)) + R_2 \varphi_2 (P_b - x_{ij}(t))) \\
+	\chi & = & \dfrac{2k}{|2 - \varphi - \sqrt{\varphi^2 - 4\varphi}|} \\
+	\varphi & = & \varphi_1 + \varphi_2 > 4
+\end{eqnarray*}
+
+It performs particularly well on real-valued problems with single single
+objectives. Table \ref{tab:pso_settings} lists the settings available for this
+optimization algorithm.
+
+\begin{table}[h!tb]\caption{PSO Settings}\label{tab:pso_settings}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{4cm} p{10cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{max-velocity} & The maximum particle velocity as a fraction of
+		                        the parameter space \\
+		\textit{cognitive-factor} & The PSO cognitive factor as described in the
+		                            literature ($\varphi_1$) \\
+		\textit{social-factor} & The PSO social factor as described in the
+		                         literature ($\varphi_2$) \\
+		\textit{constriction} & The velocity update constriction as described
+		                        in the literature ($\chi$). \\
+		\textit{boundary-condition} & The action to take when particles reach
+		                              the parameter boundaries (\verb!None!,
+		                              \verb!Stick! or \verb!Bounce!). The
+		                              default is \verb!Bounce!. \\
+		\textit{boundary-damping} & A velocity damping factor when the boundary
+		                            condition is \verb!Bounce!. \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsubsection{ADPSO}
+\subsubsection{GA}
+\subsubsection{SPSA}
+\subsubsection{Systematic}
+
+
+\subsection{optirooter}\label{app:optirooter}
+The \verb!optirooter! application can be used by the \verb!optiworker! to execute dispatcher
+process under the privileges of the user owning the actual task being executed.
+This application will use the token server to identify which user the current
+task belongs to. When used, the \verb!optirooter! will receive a challenge key from
+the token server, which is relays back to the \verb!optiworker!, \verb!optimaster! and 
+finally optirunner application. The optirunner will then encrypt this challenge
+with a unique token generated by the token server before starting the job. This
+is send back to the \verb!optirooter! which verifies to which user this encrypted
+token belongs. On success, it will drop privileges to this user, and execute
+the dispatcher process. Before dropping privileges, the dispatcher is
+verified to be either a system installed dispatcher, or a dispatcher owned
+by the user (and located in the users' home directory) to which it will
+drop privileges. Note that the \verb!optirooter! application has to be setuid and
+owned by root.
+
+\subsection{optiextractor}\label{app:optiextractor}
+
+\subsection{Dispatchers}
+There are a few dispatchers available by default. This section will shortly
+describe these dispatchers.
+
+\subsubsection{Webots}
+The webots dispatcher can be used to evaluate solutions in webots. The
+dispatcher will launch a webots process for each task it receives and runs
+the world file specified in the dispatcher settings. In your controller, you
+can make use of the optimization::Webots class (see liboptimization API
+documentation for more information) to extract the task description and setup
+your controller accordingly. The specific dispatcher settings for the webots
+dispatcher are listed in table \ref{tab:webots_settings}.
+
+Sometimes it might be necessary to change the world file according to your task
+description. To this end, a special setting is available (\textit{worldBuilderPath})
+which specifies an executable that will dynamically build the webots world
+file to use instead of specifying it in the \textit{world} setting. The
+world builder executable will be executed before the webots process is executed
+and will receive the task description on \verb!standard in!
+(just as for the dispatcher). It should then generate the world file and 
+write the path to this world file on \verb!standard out!. It can be useful
+to use the optimization::Dispatcher class (see liboptimization API 
+documentation) to extract the task description. Note that if you use several
+worker processes, you should take care to generate unique world file names.
+The world files will be automatically removed after the task has been run.
+
+\begin{table}[h!tb]\caption{Webots Dispatcher Settings}\label{tab:webots_settings}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{3cm} p{10cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{mode} & The mode in which to run webots (defaults to \textit{run}):
+		\begin{itemize}
+			\item \textit{run}: start webots graphically and start running simulation
+			\item \textit{stop}: start webots graphically but do not start running simulation
+			\item \textit{batch}: start webots in batch mode ($<$ 6.1.6)
+			\item \textit{minimize}: start webots in minimize mode ($>=$ 6.1.6)
+		\end{itemize} \\
+		\textit{world} & Absolute path to the webots world to run (required unless worldBuilderPath is used). In secure mode, the world must be owned by the user and must be in
+		the users' home directory \\
+		\textit{webotsPath} & Path to the webots executable to use (optional) \\
+		\textit{environment} & Comma separated list of key=value environment variables
+		              to set in the environment in which to execute webots
+		              (optional) \\
+		\textit{worldBuilderPath} & Path to the world builder to use to build to world
+		                   before executing webots (optional)
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\bibliographystyle{apacite}
+\bibliography{references}
+
+\newpage
+\section{Example job XML representation}\label{appendix:xml}
+\begin{lstlisting}[language=xml]
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!-- Job specification -->
+<job name="job" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <!-- Type of optimizer to use -->
+  <optimizer name="pso">
+    <setting name="population-size">60</setting>
+    <setting name="max-iterations">400</setting>
+  </optimizer>
+
+  <!-- Boundaries, in degrees -->
+  <boundaries>
+    <boundary name="hip" min="-20" max="30"/>
+    <boundary name="knee" min="0" max="70"/>
+    <boundary name="position" min="0" max="51"/>
+    <boundary name="gain" min="0" max="800"/>
+  </boundaries>
+
+  <!-- Parameters -->
+  <parameters>
+    <!-- Hip -->
+    <parameter name="hip::y::0" boundary="hip"/>
+    <parameter name="hip::y::1" boundary="hip"/>
+
+    <parameter name="hip::x::0" boundary="position"/>
+    <parameter name="hip::x::1" boundary="position"/>
+
+    <parameter name="hip::p" boundary="gain"/>
+    <parameter name="hip::d" boundary="gain"/>
+
+    <!-- Knee, .... -->
+    <!-- Ankle, .... -->
+  </parameters>
+
+  <!-- Dispatcher -->
+  <dispatcher name="webots">
+    <setting name="mode">batch</setting>
+    <setting name="world">energy.wbt</setting>
+    <setting name="maxTime">15</setting>
+  </dispatcher>
+
+  <fitness>
+    <expression>fspeed**wspeed * fpower**wpower</expression>
+
+    <variable name="fpower">1 / power</setting>
+    <variable name="fspeed">min(max(0, speed), 2)</setting>
+
+    <!-- Coefficients -->
+    <variable name="wspeed">1</setting>
+    <variable name="wpower">1</setting>
+  </fitness>
+</job>
+\end{lstlisting}
+
+\end{document}

@@ -4,8 +4,22 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{listings}
+\usepackage{color}
 
-\usepackage{apacite}
+\usepackage[hyper]{apacite}
+
+\definecolor{bwgreen}{rgb}{0, 0.3, 0}
+\definecolor{bwblue}{rgb}{0, 0, 0.9}
+
+\usepackage[
+	pdfborder={0 0 0 0},
+	bookmarks=true,
+	colorlinks=true,
+	linkcolor=bwblue,
+	citecolor=bwgreen
+]{hyperref}
+
+\usepackage[all]{hypcap}
 
 \title{Optimization Framework Conceptual Overview}
 
@@ -38,7 +52,7 @@ communication protocols.
 
 The overall concept of the framework is such that no specific
 restrictions are placed on the type of optimization algorithm or the manner
-in which a task has to be evaluated. Therefore, the framework can easily be
+in which a task has to be evaluatessd. Therefore, the framework can easily be
 used for many different and concurrent tasks.
 
 \begin{figure}[h!tb]
@@ -409,7 +423,7 @@ their settings using the \verb!-l! command line option.
 
 \subsubsection{PSO}
 The particle swarm optimization is a very elegant, simple and fairly recent
-optimization algorithm \cite{kennedy_particle_1995,clerc_pse_2002}. It is 
+optimization algorithm \cite{kennedy_pso_1995,clerc_pse_2002}. It is 
 loosely based on the notion of swarm/flocking behavior. The basic algorithm
 behind the optimization can be described by:
 
@@ -449,10 +463,192 @@ optimization algorithm.
 \end{table}
 
 \subsubsection{ADPSO}
-\subsubsection{GA}
-\subsubsection{SPSA}
-\subsubsection{Systematic}
+Adaptive Diversity Particle Swarm Optimization is a variant of the standard
+PSO algorithm that introduces collision detection and particle dispersion
+using adaptive, per particle collision radi and adaptive collision reaction
+forces \cite{monson_ad_2006}. It is a fairly elegant solution for resolving
+some of the deficits of the standard PSO such as premature convergence. It
+performs better on multi modal functions than the standard PSO.
 
+The collision radius $c_r$ is defined by:
+
+\begin{eqnarray*}
+	c_r & = & \gamma^{b_i} + \gamma^{b_j} r
+\end{eqnarray*}
+
+With $\gamma$ an adaptation constant, $b_i$ and $b_j$ the respective number
+of times particles $i$ and $j$ have collided until now and $r$ a basic collision
+radius. As can easily seen, the collision radius per particle decreases
+the more it collides.
+
+When two particles collide, their velocity is reflected and their new position
+is calculated by:
+
+\begin{eqnarray*}
+	x'_{t + 1} & = & x_t - \gamma^{-b}(x_{t + 1} - x_{t})
+\end{eqnarray*}
+
+Thus reflecting the current position around the old position, weighted by
+$\gamma^{-b}$. Thus, as the adaptive radius decreases with increased number
+of collisions, the bounce distance increases. This allows both good convergence
+and escaping of local minima.
+
+Table \ref{tab:adpso_settings} lists the settings available for this optimizer.
+ADPSO is an extension of the standard PSO and the PSO settings defined in
+table \ref{tab:pso_settings} also apply to this optimization algorithm. For
+more information on the available settings, see \citeA{monson_ad_2006}.
+
+\begin{table}[h!tb]\caption{ADPSO Settings}\label{tab:adpso_settings}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{4cm} p{10cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{adaptation-constant} & The adaptation constant ($\gamma$) with regard to the number
+		                      of times a particle has collided (0 - 1) \\
+		\textit{collision-radius} & The basic collision radius ($r$) as a fraction of the
+		                   parameter space \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsubsection{GA}
+This optimizer implements the well known standard implementation of 
+Genetic Algorithms. Table \ref{tab:ga_settings} lists the settings available
+for this optimizer.
+
+\begin{table}[h!tb]\caption{GA Settings}\label{tab:ga_settings}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{4cm} p{10cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{selection} & The type of selection mechanism to use to make
+		                     new populations. Available are ``Tournament'' and
+		                     ``RouletteWheel''. Tournament selection is the
+		                     default \\
+		\textit{tournament-size} & The number of individuals to use for
+		                           tournament selection. Applies only when
+		                           selection is ``Tournament'' \\
+		\textit{tournament-probability} & Probability with which an individual
+		                                  is selected from a tournament:
+		                                  $p (1 - p)^i$ with $i$ the individual
+		                                  order. You can use a mathematical
+		                                  expression for this setting and use
+		                                  the variable $k$ to indicate the
+		                                  current iteration number. Applies only
+		                                  when selection is ``Tournament'' \\
+		\textit{mutation-probability} & The probability with which to mutate an
+		                                individual. You can use a mathematical
+		                                expression for this setting and use
+		                                the variable $k$ to indicate the
+		                                current iteration number \\
+		\textit{mutation-rate} & The maximum amount of mutation as a fraction
+		                         of the parameter space. You can use a mathematical
+		                         expression for this setting and use
+		                         the variable $k$ to indicate the
+		                         current iteration number \\
+		\textit{crossover-probability} & The probability with which to use
+		                                 cross-over to create a new individual
+		                                 from two selected parent individuals.
+		                                 You can use a mathematical
+		                                 expression for this setting and use
+		                                 the variable $k$ to indicate the
+		                                 current iteration number \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsubsection{SPSA}
+Simultaneous Perturbation Stochastic Approximation is an efficient,
+popular, stochastic gradient descend method \cite{spall_multivariate_1992}. It
+can be defined by:
+
+\begin{eqnarray*}
+	\hat{\theta}_{k + 1} & = & \hat{\theta}_k - a_k \hat{g}_k(\hat{\theta}_k) \\
+	\hat{g}_{ki}(\hat{\theta}_k) & = & \frac{y(\hat{\theta}_k + c_k \Delta_k) - 
+	                                         y(\hat{\theta}_k - c_k \Delta_k)}{2 c_k}
+\end{eqnarray*}
+
+With $\hat{\theta}_k$ the solution estimation at iteration $k$, $a_k$ a learning
+rate, $\hat{g}_k(\hat{\theta}_k)$ the estimation of the gradient at
+$\hat{\theta}_k$, $y$ the objective function, $c_k$ a perturbation rate and
+$\Delta_k$ the randomized perturbation vector.
+
+The current implementation performs this two-sided perturbation to estimate the
+gradient with the perturbation vector $\Delta_k$ drawn from a Bernoulli $\pm$
+distribution to satisfy convergence conditions.
+
+Table \ref{tab:spsa_settings} lists the settings available for this optimizer.
+
+\begin{table}[h!tb]\caption{SPSA Settings}\label{tab:spsa_settings}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{4cm} p{10cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{learning-rate} & The learning rate $a_k$ used to update the
+		                         new solution according to the current gradient
+		                         estimation. You can use a mathematical
+		                         expression for this setting and use the
+		                         variable $k$ to indicate the current iteration
+		                         number \\
+		\textit{perturbation-rate} & The rate $c_k$ with which to perturbate the 
+		                             solution to estimate the gradient. You
+		                             can use a mathematical expression for this
+		                             setting and use the variable $k$ to
+		                             indicate the current iteration number \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsubsection{Systematic Search}
+The systematic search optimizer is not an optimization algorithm, but instead
+performs a systematic parameter search on a range of parameters. This is an
+example of how the distribution of tasks by the framework can be used for
+purposes other than strictly optimizations.
+
+This optimizer extends the job XML description so that you can specify the
+range for each parameter to explore systematically instead of just the upper
+and lower boundary as done normally. An example description:
+
+\begin{lstlisting}[language=xml]
+  <boundaries>
+    <range name="{NAME 1}" min="{MIN}" max="{MAX}" step="{STEP}"/>
+    <range name="{NAME 2}" min="{MIN}" max="{MAX}" steps="{STEPS}"/>
+  </boundaries>
+\end{lstlisting}
+
+You can specify ranges in two different ways, either by specifying the step
+size explicitly (first range in the example) or by specifying the number of
+steps that should be explored (second range in the example). In the second case
+the step size will be automatically calculated.
+
+The ranges are the only thing you need to specify. The parameters will be
+automatically generated with the corresponding range names.
+
+Table \ref{tab:systematic_settings} lists the available settings. The
+default \textit{population-size} setting determines the batch size in which
+solutions are send to the \verb!optimaster!. You should set this to a
+sensible value (around 200/300 or something).
+
+\begin{table}[h!tb]\caption{Systematic Search Settings}\label{tab:systematic_settings}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{4cm} p{10cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{start-index} & The start index from which to start searching.
+		                       This is primarily used as a crude way to resume
+		                       a previously cancelled search. The index is the
+		                       linear, combinatory index of the solutions. \\
+		\bottomrule
+	\end{tabular}
+\end{table}
 
 \subsection{optirooter}\label{app:optirooter}
 The \verb!optirooter! application can be used by the \verb!optiworker! to execute dispatcher
@@ -471,6 +667,11 @@ drop privileges. Note that the \verb!optirooter! application has to be setuid an
 owned by root.
 
 \subsection{optiextractor}\label{app:optiextractor}
+The optiextractor application can be used to inspect a results database. You
+can use it to view the settings, parameters and boundaries of a specific
+job. It also features the possibility to automatically replay a specific
+solution found during optimization. This is particularly useful in conjunction
+with for instance webots, to quickly view a particular solution.
 
 \subsection{Dispatchers}
 There are a few dispatchers available by default. This section will shortly
@@ -512,7 +713,9 @@ The world files will be automatically removed after the task has been run.
 			\item \textit{batch}: start webots in batch mode ($<$ 6.1.6)
 			\item \textit{minimize}: start webots in minimize mode ($>=$ 6.1.6)
 		\end{itemize} \\
-		\textit{world} & Absolute path to the webots world to run (required unless worldBuilderPath is used). In secure mode, the world must be owned by the user and must be in
+		\textit{world} & Absolute path to the webots world to run (required 
+		                 unless worldBuilderPath is used). In secure mode, the
+		                 world must be owned by the user and must be in
 		the users' home directory \\
 		\textit{webotsPath} & Path to the webots executable to use (optional) \\
 		\textit{environment} & Comma separated list of key=value environment variables
@@ -524,64 +727,9 @@ The world files will be automatically removed after the task has been run.
 	\end{tabular}
 \end{table}
 
+\newpage
+
 \bibliographystyle{apacite}
 \bibliography{references}
-
-\newpage
-\section{Example job XML representation}\label{appendix:xml}
-\begin{lstlisting}[language=xml]
-<?xml version="1.0" encoding="UTF-8" ?>
-
-<!-- Job specification -->
-<job name="job" xmlns:xi="http://www.w3.org/2001/XInclude">
-  <!-- Type of optimizer to use -->
-  <optimizer name="pso">
-    <setting name="population-size">60</setting>
-    <setting name="max-iterations">400</setting>
-  </optimizer>
-
-  <!-- Boundaries, in degrees -->
-  <boundaries>
-    <boundary name="hip" min="-20" max="30"/>
-    <boundary name="knee" min="0" max="70"/>
-    <boundary name="position" min="0" max="51"/>
-    <boundary name="gain" min="0" max="800"/>
-  </boundaries>
-
-  <!-- Parameters -->
-  <parameters>
-    <!-- Hip -->
-    <parameter name="hip::y::0" boundary="hip"/>
-    <parameter name="hip::y::1" boundary="hip"/>
-
-    <parameter name="hip::x::0" boundary="position"/>
-    <parameter name="hip::x::1" boundary="position"/>
-
-    <parameter name="hip::p" boundary="gain"/>
-    <parameter name="hip::d" boundary="gain"/>
-
-    <!-- Knee, .... -->
-    <!-- Ankle, .... -->
-  </parameters>
-
-  <!-- Dispatcher -->
-  <dispatcher name="webots">
-    <setting name="mode">batch</setting>
-    <setting name="world">energy.wbt</setting>
-    <setting name="maxTime">15</setting>
-  </dispatcher>
-
-  <fitness>
-    <expression>fspeed**wspeed * fpower**wpower</expression>
-
-    <variable name="fpower">1 / power</setting>
-    <variable name="fspeed">min(max(0, speed), 2)</setting>
-
-    <!-- Coefficients -->
-    <variable name="wspeed">1</setting>
-    <variable name="wpower">1</setting>
-  </fitness>
-</job>
-\end{lstlisting}
 
 \end{document}

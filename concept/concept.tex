@@ -513,6 +513,50 @@ more information on the available settings, see \citeA{monson_ad_2006}.
 	\end{tabular}
 \end{table}
 
+\subsubsection{SPSA}
+Simultaneous Perturbation Stochastic Approximation is an efficient,
+popular, stochastic gradient descend method \cite{spall_multivariate_1992}. It
+can be defined by:
+
+\begin{eqnarray*}
+	\hat{\theta}_{k + 1} & = & \hat{\theta}_k - a_k \hat{g}_k(\hat{\theta}_k) \\
+	\hat{g}_{ki}(\hat{\theta}_k) & = & \frac{y(\hat{\theta}_k + c_k \Delta_k) - 
+	                                         y(\hat{\theta}_k - c_k \Delta_k)}{2 c_k}
+\end{eqnarray*}
+
+With $\hat{\theta}_k$ the solution estimation at iteration $k$, $a_k$ a learning
+rate, $\hat{g}_k(\hat{\theta}_k)$ the estimation of the gradient at
+$\hat{\theta}_k$, $y$ the objective function, $c_k$ a perturbation rate and
+$\Delta_k$ the randomized perturbation vector.
+
+The current implementation performs this two-sided perturbation to estimate the
+gradient with the perturbation vector $\Delta_k$ drawn from a Bernoulli $\pm$
+distribution to satisfy convergence conditions.
+
+Table \ref{tab:spsa_settings} lists the settings available for this optimizer.
+
+\begin{table}[h!tb]\caption{SPSA Settings}\label{tab:spsa_settings}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{4cm} p{10cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{learning-rate} & The learning rate $a_k$ used to update the
+		                         new solution according to the current gradient
+		                         estimation. You can use a mathematical
+		                         expression for this setting and use the
+		                         variable $k$ to indicate the current iteration
+		                         number \\
+		\textit{perturbation-rate} & The rate $c_k$ with which to perturbate the 
+		                             solution to estimate the gradient. You
+		                             can use a mathematical expression for this
+		                             setting and use the variable $k$ to
+		                             indicate the current iteration number \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
 \subsubsection{GA}
 This optimizer implements the well known standard implementation of 
 Genetic Algorithms. Table \ref{tab:ga_settings} lists the settings available
@@ -557,50 +601,6 @@ for this optimizer.
 		                                 expression for this setting and use
 		                                 the variable $k$ to indicate the
 		                                 current iteration number \\
-		\bottomrule
-	\end{tabular}
-\end{table}
-
-\subsubsection{SPSA}
-Simultaneous Perturbation Stochastic Approximation is an efficient,
-popular, stochastic gradient descend method \cite{spall_multivariate_1992}. It
-can be defined by:
-
-\begin{eqnarray*}
-	\hat{\theta}_{k + 1} & = & \hat{\theta}_k - a_k \hat{g}_k(\hat{\theta}_k) \\
-	\hat{g}_{ki}(\hat{\theta}_k) & = & \frac{y(\hat{\theta}_k + c_k \Delta_k) - 
-	                                         y(\hat{\theta}_k - c_k \Delta_k)}{2 c_k}
-\end{eqnarray*}
-
-With $\hat{\theta}_k$ the solution estimation at iteration $k$, $a_k$ a learning
-rate, $\hat{g}_k(\hat{\theta}_k)$ the estimation of the gradient at
-$\hat{\theta}_k$, $y$ the objective function, $c_k$ a perturbation rate and
-$\Delta_k$ the randomized perturbation vector.
-
-The current implementation performs this two-sided perturbation to estimate the
-gradient with the perturbation vector $\Delta_k$ drawn from a Bernoulli $\pm$
-distribution to satisfy convergence conditions.
-
-Table \ref{tab:spsa_settings} lists the settings available for this optimizer.
-
-\begin{table}[h!tb]\caption{SPSA Settings}\label{tab:spsa_settings}\vspace{0.1in}
-	\centering
-
-	\begin{tabular}{p{4cm} p{10cm}}
-		\toprule
-		\textbf{Name} & \textbf{Description} \\
-		\midrule
-		\textit{learning-rate} & The learning rate $a_k$ used to update the
-		                         new solution according to the current gradient
-		                         estimation. You can use a mathematical
-		                         expression for this setting and use the
-		                         variable $k$ to indicate the current iteration
-		                         number \\
-		\textit{perturbation-rate} & The rate $c_k$ with which to perturbate the 
-		                             solution to estimate the gradient. You
-		                             can use a mathematical expression for this
-		                             setting and use the variable $k$ to
-		                             indicate the current iteration number \\
 		\bottomrule
 	\end{tabular}
 \end{table}

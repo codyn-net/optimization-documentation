@@ -1,4 +1,4 @@
-\documentclass{article}
+\documentclass{report}
 \usepackage{amsmath}
 \usepackage{fullpage}
 \usepackage{graphicx}
@@ -35,24 +35,26 @@ showstringspaces=false
 
 \maketitle
 
-\section{Conceptual Overview}
+\tableofcontents
+
+\chapter{Conceptual Overview}
 Figure \ref{fig:overview} shows a schematic overview of the optimization
 framework. There are three distinct layers (user, server and workstation)
 in the system. The \textit{user} layer runs the actual optimization process
 which will produce tasks that have to be evaluated. These tasks are passed
-to the \textit{server} layer which queues them in a task queue. The 
+to the \textit{server} layer which queues them in a task queue. The
 \textit{server} acts as a central hub to distribute any tasks it receives
-to the available workstations. A \textit{workstation} in turn receives a 
+to the available workstations. A \textit{workstation} in turn receives a
 single task from the \textit{server} and executes it. When the task has been
 evaluated, the result is sent back to the \textit{user} through the
-\textit{server} layer. The different layers can run on a single PC, but can 
+\textit{server} layer. The different layers can run on a single PC, but can
 also be placed on different networked PCs. See section \ref{sec:implementation}
 for more information on the implementation of the different layers and
 communication protocols.
 
 The overall concept of the framework is such that no specific
 restrictions are placed on the type of optimization algorithm or the manner
-in which a task has to be evaluatessd. Therefore, the framework can easily be
+in which a task has to be evaluated. Therefore, the framework can easily be
 used for many different and concurrent tasks.
 
 \begin{figure}[h!tb]
@@ -62,17 +64,17 @@ used for many different and concurrent tasks.
 	\label{fig:overview}
 \end{figure}
 
-\subsection{User Layer}
+\section{User Layer}
 The user layer represents the front-end layer which is run by a user of the
 system. This layer is responsible for running the optimization algorithm. The
 algorithm produces tasks to be evaluated. As can be seen in figure
 \ref{fig:overview}, each optimization, run at the user layer, is encapsulated
 in a \textit{Job} process. The job drives the optimization, sends tasks
-to the \textit{server} layer, and feeds retrieved results back into the 
+to the \textit{server} layer, and feeds retrieved results back into the
 optimizer.
 
 The optimizer consists of a population (of tasks) that need to
-be executed, an optional function combining a multi-objective fitness evaluation
+be executed, an optional function which combines a multi-objective fitness evaluation
 into a single fitness value, and a data storage to store the results of the
 optimization. The optimizer population is a set of tasks that can be executed
 independently. For example, in Genetic Algorithms this would be a single
@@ -83,7 +85,7 @@ into a single fitness value, used by the optimizer.
 
 A description of the task that is sent to the \textit{server} layer
 is given in table \ref{tab:task_message}. Once a task is executed, a result
-message as described in table \ref{tab:result_message} is sent back to 
+message as described in table \ref{tab:result_message} is sent back to
 the \textit{user} layer.
 
 \begin{table}[h!tb]\caption{Task Message}\label{tab:task_message}\vspace{0.1in}
@@ -120,46 +122,46 @@ the \textit{user} layer.
 	\end{tabular}
 \end{table}
 
-\subsection{Server Layer}
+\section{Server Layer}
 The server layer consists of a single process which acts as a distribution
-center for tasks to be evaluated. This layer is used to allow multiple 
+center for tasks to be evaluated. This layer is used to allow multiple
 optimization processes to be run, while sharing the workstation resources that
-are currently available. The tasks are scheduled fairly with respect to estimated
+are currently available. The tasks are scheduled fairly with respect to the estimated
 execution time and a task priority. The server automatically discovers new
 workstations as they come online through a simple discovery protocol. When
 new tasks are received from the \textit{user} layer, it schedules these tasks
 (according to their priority) onto a task queue. Whenever a workstation becomes
-available, the task is send to this workstation to be executed. The workstation
+available, the task is sent to this workstation to be executed. The workstation
 then sends the result back to the server, which in turn relays it back to the
 \textit{user} layer. Details of the implementation and the used communication
 protocols will be discussed in section \ref{sec:implementation}.
 
-\subsection{Workstation Layer}
+\section{Workstation Layer}
 The \textit{workstation} layer is responsible for executing a single task, and
 sending the result back to the server layer. Each task is received from
 the \textit{server} layer with the task information as specified in table
 \ref{tab:task_message}. The worker process then resolves a dispatcher process
 from the task description that is to be used to evaluate the task. When the
-correct dispatcher is located, this dispatcher will be executed with 
+correct dispatcher is located, this dispatcher will be executed with
 the task that has to be evaluated. From the dispatcher, the worker will
 receive a result in terms of fitness, which it then relays back to the
 \textit{server} layer.
 
-\section{Implementation}\label{sec:implementation}
+\chapter{Implementation}\label{sec:implementation}
 This section will give a short overview of the implementation of various parts
 of the framework. For more detailed information, see the API documentation.
 
-\subsection{Communication}
+\section{Communication}
 All communication in the framework is implemented using google protobuf. This
 is a small, strictly typed, object serialization/deserialization library
 developed and released under the BSD open source license by Google. This library
 was chosen because it is fast, object oriented, strictly typed and
-well maintained. Messages in the framework are mainly send over TCP/IP, but 
+well maintained. Messages in the framework are mainly sent over TCP/IP, but
 UNIX domain sockets are also supported.
 
-\subsection{Software}
+\section{Software}
 There are two major parts of software developed for the framework. The first
-part is the lower level backbone of the framework consisting of the 
+part is the lower level backbone of the framework consisting of the
 \textit{server} and \textit{workstation} layers. These layers are implemented in
 C++. Common functionality reused in the different components of these layers
 is provided in a separate C++ library. The developed applications are:
@@ -169,20 +171,19 @@ is provided in a separate C++ library. The developed applications are:
 	distributes task to workstations
 	\item worker (\textit{workstation} layer): the process that accepts tasks
 	and executes the appropriate dispatcher
-	\item dispatcher (\textit{workstation} layer): the dispatchers that 
+	\item dispatcher (\textit{workstation} layer): the dispatchers that
 	evaluate a specific task
 \end{itemize}
 
 The \textit{user} layer on the other hand has been implemented in C\# (using
 ``\textit{mono}'' the open source version of the .NET framework). It consists of a
 .NET library containing classes with which optimizers can be easily implemented,
-and an application which can run jobs specified using XML (see appendix
-\ref{appendix:xml}). The C\# language
+and an application which can run jobs specified using XML. The C\# language
 was chosen for this layer because it is easy to learn, modern, powerful,
 cross-platform and reduces the time needed to implement new optimization
 algorithms.
 
-\subsection{Security}
+\section{Security}\label{sec:security}
 To support a multi-user environment, the framework can be configured such that
 dispatcher processes will be executed under user privileges. When this
 functionality is enabled, the \textit{worker} will execute a separate process
@@ -195,11 +196,11 @@ process in question, before dropping to the user credentials. As such, even
 if the key would be retrieved, only executables that belong to the user
 to whom the key was given can be executed.
 
-\section{Applications and Tools}
+\chapter{Applications and Tools}
 The following section will describe the applications and tools distributed with
 the optimization framework.
 
-\subsection{optimaster}\label{app:optimaster}
+\section{optimaster}\label{app:optimaster}
 The \verb!optimaster! application represents the server layer of the framework. It
 acts as a distribution center for optimization process. You can specify some
 options for the \verb!optimaster! using a configuration file in \verb!/etc/optimaster.conf!.
@@ -231,7 +232,7 @@ settings are listed in table \ref{tab:optimaster_configuration}.
 	\end{tabular}
 \end{table}
 
-\subsection{optiworker}\label{app:optiworker}
+\section{optiworker}\label{app:optiworker}
 The \verb!optiworker! application represents the workstation layer of the framework. It
 receives single tasks from the \verb!optimaster! and executes them according to the
 task description. The \verb!optiworker! can run in two modes, \textit{normal} mode
@@ -257,7 +258,7 @@ settings are listed in table \ref{tab:optiworker_configuration}.
 		\midrule
 		\textit{discovery namespace} & the discovery namespace identifies
 		                               to which discovery namespace the
-		                               \verb!optimaster! belongs. \\
+		                               \verb!optiworker! belongs. \\
 		\textit{discovery address} & the address (IP:port) on which to
 		                             broadcast and listen for discovery
 		                             messages (usually a multicast address). \\
@@ -269,7 +270,7 @@ settings are listed in table \ref{tab:optiworker_configuration}.
 	\end{tabular}
 \end{table}
 
-\subsection{optirunner}\label{app:optirunner}
+\section{optirunner}\label{app:optirunner}
 The optirunner application is the most important application for the end user.
 This application will run the actual optimization process and will be started
 by the user. It is possible to use the optimization API to write your own
@@ -282,7 +283,7 @@ this XML job representation is given in the next section. Thereafter, a short
 explanation of how you can use your own custom optimization algorithms with
 optirunner is given.
 
-\subsubsection{XML description}
+\subsection{XML description}
 The XML description of a job consists of a few distinct sections. The basic
 element is \verb!job!:
 
@@ -292,15 +293,17 @@ element is \verb!job!:
 <job name="{NAME}">
   <priority>{PRIORITY}</priority>
   <timeout>{TIMEOUT}</timeout>
+  <token>{TOKEN}</token>
   <!-- Rest -->
 </job>
 \end{lstlisting}
 
 A job should always have a name. The name is used to generate the file name
-in which results are written. The priority and timeout elements are optional
+in which results are written. The priority, timeout and token elements are optional
 and specify respectively the priority level at which you want to run your job
-(defaults to 1) and a timeout indicating the maximum allowed time for a task
-to run. The timeout is a fail-safe for the master so that it can discard tasks
+(defaults to 1), a timeout indicating the maximum allowed time for a task
+to run and a token representing a unique identifier of the job (see also \ref{sec:running}).
+The timeout is a fail-safe for the master so that it can discard tasks
 that are running too long (for example if you have to make use of third party
 software that is buggy). The remainder of the job description consists of
 the \verb!optimizer!, \verb!boundaries!, \verb!parameters! and \verb!dispatcher!
@@ -335,15 +338,18 @@ boundaries definition:
   <optimizer>
     <!-- ... -->
     <boundaries>
-      <boundary name="{BOUNDARY 1}" min="{VALUE}" max="{VALUE}"/>
-      <boundary name="{BOUNDARY 2}" min="{VALUE}" max="{VALUE}"/>
+      <boundary name="{BOUNDARY 1}" min="{VALUE}" max="{VALUE}" min-initial="{VALUE}" max-initial="{VALUE}"/>
+      <boundary name="{BOUNDARY 2}" min="{VALUE}" max="{VALUE}" min-initial="{VALUE}" max-initial="{VALUE}"/>
     </boundaries>
     <!-- ... -->
   </optimizer>
 \end{lstlisting}
 
 Each boundary is named, and has a minimum and a maximum value. The name is
-used in the parameter definition to reference a specific boundary.
+used in the parameter definition to reference a specific boundary. The
+\verb!min-initial! and \verb!max-initial! attributes are \textit{optional} and
+specify respectively the minimum and maximum value to which the initial
+population should be initialized (for population based algorithms).
 
 The \verb!parameters! element specifies the set of open parameters to be
 optimized. An example definition:
@@ -352,8 +358,8 @@ optimized. An example definition:
   <optimizer>
     <!-- ... -->
     <parameters>
-      <parameter name="{BOUNDARY 1}" boundary="{BOUNDARY NAME}"/>
-      <parameter name="{BOUNDARY 2}" boundary="{BOUNDARY NAME}"/>
+      <parameter name="{PARAMETER 1}" boundary="{BOUNDARY NAME}"/>
+      <parameter name="{PARAMETER 2}" boundary="{BOUNDARY NAME}"/>
     </parameters>
     <!-- ... -->
   </optimizer>
@@ -361,12 +367,27 @@ optimized. An example definition:
 
 Each parameter is named, and specifies by which boundary its value is bound.
 
-The last element in the optimizer node is the \verb!fitness! element. 
+In addition to specifying boundaries in a separate section so that they can
+be reused, you can also write boundary values in a more concise and simpler
+format directly in the parameter specification:
+
+\begin{lstlisting}[language=xml]
+  <optimizer>
+    <!-- ... -->
+    <parameters>
+      <parameter name="{PARAMETER 1}" min="{VALUE}" max="{VALUE}" min-initial="{VALUE}" max-initial="{VALUE}"/>
+      <parameter name="{PARAMETER 2}" min="{VALUE}" max="{VALUE}" min-initial="{VALUE}" max-initial="{VALUE}"/>
+    </parameters>
+    <!-- ... -->
+  </optimizer>
+\end{lstlisting}
+
+The last element in the optimizer node is the \verb!fitness! element.
 This can be used if you have
 multiple objectives in your fitness function. By default, if you do not specify
 this element, the first fitness value the dispatcher returns is used.
 Dispatchers can return multiple fitness values if there are multiple objectives
-to be used for optimization. In this case, it can be useful to be able to 
+to be used for optimization. In this case, it can be useful to be able to
 define a mathematical expression combining these different values in a single
 fitness value. As such, you can adjust the way you combine these different
 objectives without having to modify the dispatcher. An example fitness
@@ -419,7 +440,38 @@ specific job. For instance, using the webots dispatcher, you can retrieve any
 additional settings in your webots controller, and configure the simulation
 environment accordingly.
 
-\subsection{Optimization Algorithms}
+\newpage
+A full XML job description example:
+
+\begin{lstlisting}[language=xml]
+<?xml version="1.0" encoding="utf-8"?>
+
+<job name="example">
+  <optimizer name="pso">
+    <setting name="population-size">20</setting>
+    <setting name="max-iterations">60</setting>
+    <setting name="max-velocity">0.6</setting>
+    <boundaries>
+      <!-- The maximum speed of the e-puck is 1000 -->
+      <boundary name="speed" min="100" max="1000"/>
+    </boundaries>
+    <parameters>
+      <parameter name="left" boundary="speed"/>
+      <parameter name="right" boundary="speed"/>
+    </parameters>
+    <fitness>
+      <expression>radius - from_origin</expression>
+    </fitness>
+  </optimizer>
+  <dispatcher name="webots">
+    <setting name="world">YOUR_PATH/webots/worlds/example.wbt</setting>
+    <setting name="mode">batch</setting>
+    <setting name="max-time">10</setting>
+  </dispatcher>
+</job>
+\end{lstlisting}
+
+\section{Optimization Algorithms}
 The optimization algorithms currently implemented are:
 
 \begin{itemize}
@@ -434,9 +486,9 @@ These are available from the optimizers-sharp library. When using
 \verb!optirunner!, you can list the available optimization algorithms and
 their settings using the \verb!-l! command line option.
 
-\subsubsection{PSO}
+\subsection{PSO}
 The particle swarm optimization is a very elegant, simple and fairly recent
-optimization algorithm \cite{kennedy_pso_1995,clerc_pse_2002}. It is 
+optimization algorithm \cite{kennedy_pso_1995,clerc_pse_2002}. It is
 loosely based on the notion of swarm/flocking behavior. The basic algorithm
 behind the optimization can be described by:
 
@@ -475,7 +527,7 @@ optimization algorithm.
 	\end{tabular}
 \end{table}
 
-\subsubsection{ADPSO}
+\subsection{ADPSO}
 Adaptive Diversity Particle Swarm Optimization is a variant of the standard
 PSO algorithm that introduces collision detection and particle dispersion
 using adaptive, per particle collision radi and adaptive collision reaction
@@ -526,14 +578,14 @@ more information on the available settings, see \citeA{monson_ad_2006}.
 	\end{tabular}
 \end{table}
 
-\subsubsection{SPSA}
+\subsection{SPSA}
 Simultaneous Perturbation Stochastic Approximation is an efficient,
 popular, stochastic gradient descend method \cite{spall_multivariate_1992}. It
 can be defined by:
 
 \begin{eqnarray*}
 	\hat{\theta}_{k + 1} & = & \hat{\theta}_k - a_k \hat{g}_k(\hat{\theta}_k) \\
-	\hat{g}_{ki}(\hat{\theta}_k) & = & \frac{y(\hat{\theta}_k + c_k \Delta_k) - 
+	\hat{g}_{ki}(\hat{\theta}_k) & = & \frac{y(\hat{\theta}_k + c_k \Delta_k) -
 	                                         y(\hat{\theta}_k - c_k \Delta_k)}{2 c_k}
 \end{eqnarray*}
 
@@ -561,7 +613,7 @@ Table \ref{tab:spsa_settings} lists the settings available for this optimizer.
 		                         expression for this setting and use the
 		                         variable $k$ to indicate the current iteration
 		                         number \\
-		\textit{perturbation-rate} & The rate $c_k$ with which to perturbate the 
+		\textit{perturbation-rate} & The rate $c_k$ with which to perturbate the
 		                             solution to estimate the gradient. You
 		                             can use a mathematical expression for this
 		                             setting and use the variable $k$ to
@@ -570,8 +622,8 @@ Table \ref{tab:spsa_settings} lists the settings available for this optimizer.
 	\end{tabular}
 \end{table}
 
-\subsubsection{GA}
-This optimizer implements the well known standard implementation of 
+\subsection{GA}
+This optimizer implements the well known standard implementation of
 Genetic Algorithms. Table \ref{tab:ga_settings} lists the settings available
 for this optimizer.
 
@@ -618,7 +670,7 @@ for this optimizer.
 	\end{tabular}
 \end{table}
 
-\subsubsection{Systematic Search}
+\subsection{Systematic Search}
 The systematic search optimizer is not an optimization algorithm, but instead
 performs a systematic parameter search on a range of parameters. This is an
 example of how the distribution of tasks by the framework can be used for
@@ -629,46 +681,31 @@ range for each parameter to explore systematically instead of just the upper
 and lower boundary as done normally. An example description:
 
 \begin{lstlisting}[language=xml]
-  <boundaries>
-    <range name="{NAME 1}" min="{MIN}" max="{MAX}" step="{STEP}"/>
-    <range name="{NAME 2}" min="{MIN}" max="{MAX}" steps="{STEPS}"/>
-  </boundaries>
+  <optimizer>
+    <!-- ... -->
+    <parameters>
+      <parameter name="{NAME 1}" min="{MIN}" max="{MAX}" step="{STEP}"/>
+      <parameter name="{NAME 2}" min="{MIN}" max="{MAX}" steps="{STEPS}"/>
+    </parameters>
+  </optimizer>
 \end{lstlisting}
 
 You can specify ranges in two different ways, either by specifying the step
-size explicitly (first range in the example) or by specifying the number of
-steps that should be explored (second range in the example). In the second case
+size explicitly (first parameter in the example) or by specifying the number of
+steps that should be explored (second parameter in the example). In the second case
 the step size will be automatically calculated.
 
-The ranges are the only thing you need to specify. The parameters will be
-automatically generated with the corresponding range names.
-
-Table \ref{tab:systematic_settings} lists the available settings. The
-default \textit{population-size} setting determines the batch size in which
-solutions are send to the \verb!optimaster!. You should set this to a
+There are no additional settings for the systematic search. The default
+\textit{population-size} setting determines the batch size in which
+solutions are sent to the \verb!optimaster!. You should set this to a
 sensible value (around 200/300 or something).
 
-\begin{table}[h!tb]\caption{Systematic Search Settings}\label{tab:systematic_settings}\vspace{0.1in}
-	\centering
-
-	\begin{tabular}{p{4cm} p{10cm}}
-		\toprule
-		\textbf{Name} & \textbf{Description} \\
-		\midrule
-		\textit{start-index} & The start index from which to start searching.
-		                       This is primarily used as a crude way to resume
-		                       a previously cancelled search. The index is the
-		                       linear, combinatory index of the solutions. \\
-		\bottomrule
-	\end{tabular}
-\end{table}
-
-\subsection{optirooter}\label{app:optirooter}
+\section{optirooter}\label{app:optirooter}
 The \verb!optirooter! application can be used by the \verb!optiworker! to execute dispatcher
 process under the privileges of the user owning the actual task being executed.
 This application will use the token server to identify which user the current
 task belongs to. When used, the \verb!optirooter! will receive a challenge key from
-the token server, which is relays back to the \verb!optiworker!, \verb!optimaster! and 
+the token server, which is relays back to the \verb!optiworker!, \verb!optimaster! and
 finally optirunner application. The optirunner will then encrypt this challenge
 with a unique token generated by the token server before starting the job. This
 is send back to the \verb!optirooter! which verifies to which user this encrypted
@@ -679,18 +716,18 @@ by the user (and located in the users' home directory) to which it will
 drop privileges. Note that the \verb!optirooter! application has to be setuid and
 owned by root.
 
-\subsection{optiextractor}\label{app:optiextractor}
+\section{optiextractor}\label{app:optiextractor}
 The optiextractor application can be used to inspect a results database. You
 can use it to view the settings, parameters and boundaries of a specific
 job. It also features the possibility to automatically replay a specific
 solution found during optimization. This is particularly useful in conjunction
 with for instance webots, to quickly view a particular solution.
 
-\subsection{Dispatchers}
+\section{Dispatchers}
 There are a few dispatchers available by default. This section will shortly
 describe these dispatchers.
 
-\subsubsection{Webots}
+\subsection{Webots}
 The webots dispatcher can be used to evaluate solutions in webots. The
 dispatcher will launch a webots process for each task it receives and runs
 the world file specified in the dispatcher settings. In your controller, you
@@ -705,9 +742,9 @@ which specifies an executable that will dynamically build the webots world
 file to use instead of specifying it in the \textit{world} setting. The
 world builder executable will be executed before the webots process is executed
 and will receive the task description on \verb!standard in!
-(just as for the dispatcher). It should then generate the world file and 
+(just as for the dispatcher). It should then generate the world file and
 write the path to this world file on \verb!standard out!. It can be useful
-to use the optimization::Dispatcher class (see liboptimization API 
+to use the optimization::Dispatcher class (see liboptimization API
 documentation) to extract the task description. Note that if you use several
 worker processes, you should take care to generate unique world file names.
 The world files will be automatically removed after the task has been run.
@@ -726,7 +763,7 @@ The world files will be automatically removed after the task has been run.
 			\item \textit{batch}: start webots in batch mode ($<$ 6.1.6)
 			\item \textit{minimize}: start webots in minimize mode ($>=$ 6.1.6)
 		\end{itemize} \\
-		\textit{world} & Absolute path to the webots world to run (required 
+		\textit{world} & Absolute path to the webots world to run (required
 		                 unless worldBuilderPath is used). In secure mode, the
 		                 world must be owned by the user and must be in
 		the users' home directory \\
@@ -739,6 +776,57 @@ The world files will be automatically removed after the task has been run.
 		\bottomrule
 	\end{tabular}
 \end{table}
+
+\chapter{Practical Information and Examples}
+\section{Practical Information}
+If you start running some optimizations, always first test it locally by
+launching an \verb!optimaster! and one or more \verb!optiworker! processes.
+Then use optirunner to run your job (it should automatically connect to the
+local \verb!optimaster!).
+
+If things are not working as they should, try to see if the \verb!optiworker!
+is correctly connecting to the \verb!optimaster!. To do this, run both the
+\verb!optimaster! and the \verb!optiworker! with the environment variable
+\verb!DEBUG_WORKER=1! (for example: \verb!DEBUG_WORKER=1 optimaster!). You
+should see in the output generated by \verb!optimaster! if the optiworker is
+connecting correctly.
+
+If things are still not working, try looking at the debug output of the
+\verb!optiworker!. Any problems caused by the dispatcher should be displayed
+here.
+
+\subsection{Running Distributed}
+There are several small steps involved in running your job distributed on the
+system. First you will need to be a member of the group \verb!pcreboot!. If you
+are not, please contact the biorob system administrator to request group
+membership.
+
+Secondly, you will need to generate a token so that the system can authenticate
+your job. Tokens can be generated on \url{http://eniac.epfl.ch/token.php}. Once
+you have a token, you should specify it in the \verb!<token>...</token>! element
+of the job specification.
+
+Thirdly, you will need to make sure that your job can run on the distributed
+systems. If you want to run a job on the biorob servers, you will need to make
+sure that your code is compiled for 64 bits, Ubuntu Lucid LTS. If needed you
+can compile your code on \verb!biorobcn1! which should have all the required
+development files installed. If you want to run your job in lsl218, you will
+need to compile your code for 32 bits Ubuntu Hardy LTS. Similarly, you can
+compile your code on \verb!lsl218pc1!.
+
+Lastly, you need to specify the correct master to run the job on. When running
+the job on the biorob servers, specify \verb!biorobcn1! as the master, for
+lsl218, specify \verb!lsllinux! (you can specify which master to use for
+optirunner using the \verb!-m! option).
+
+\section{Examples}
+You can find a simple optimization example on the biorob website:
+\url{http://biorob2.epfl.ch/users/jvanden/docs/example/}
+
+\section{Monitoring Progress}
+You can track job progress of jobs running on the biorob servers at:
+\url{http://biorobcn1.epfl.ch/optiweb}. Alternatively, you can use
+\verb!opticommand! to view the progress of a job.
 
 \newpage
 

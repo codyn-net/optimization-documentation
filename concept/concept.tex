@@ -795,29 +795,65 @@ If things are still not working, try looking at the debug output of the
 \verb!optiworker!. Any problems caused by the dispatcher should be displayed
 here.
 
-\subsection{Running Distributed}
+\section{Distributing Jobs}
 There are several small steps involved in running your job distributed on the
-system. First you will need to be a member of the group \verb!pcreboot!. If you
+system.
+
+\subsection{Becoming a Member}
+You will need to be a member of the group \verb!pcreboot!. If you
 are not, please contact the biorob system administrator to request group
 membership.
 
-Secondly, you will need to generate a token so that the system can authenticate
+\subsection{Tokens}
+You will need to generate a token so that the system can authenticate
 your job. Tokens can be generated on \url{http://eniac.epfl.ch/token.php}. Once
 you have a token, you should specify it in the \verb!<token>...</token>! element
 of the job specification.
 
-Thirdly, you will need to make sure that your job can run on the distributed
+\subsection{Running on the biorob servers}
+You will need to make sure that your job can run on the distributed
 systems. If you want to run a job on the biorob servers, you will need to make
-sure that your code is compiled for 64 bits, Ubuntu Lucid LTS. If needed you
-can compile your code on \verb!biorobcn1! which should have all the required
-development files installed. If you want to run your job in lsl218, you will
-need to compile your code for 32 bits Ubuntu Hardy LTS. Similarly, you can
+sure that your code is compiled for \textbf{64 bits}, Ubuntu Lucid LTS.
+If needed, you can compile your code on \verb!biorobcn1! which should have all
+the required development files installed.
+
+\subsection{Running on lsl218}
+If you want to run your job in lsl218, you will
+need to compile your code for 32 bits Ubuntu Hardy LTS. To do this, you can
 compile your code on \verb!lsl218pc1!.
 
+\subsection{Use of custom libraries}
+If you have custom libraries, make sure
+that they are either system wide installed on the distributed systems, or to
+specify \verb!LD_LIBRARY_PATH! in the environment settings of the dispatcher.
+Note: The dispatchers will not be executing under your normal login
+environment! This means that if you do anything special in your $\sim$/.bashrc
+(or similar) you will not have the same environment for the job.
+
+\subsection{Specifying the master}
 Lastly, you need to specify the correct master to run the job on. When running
 the job on the biorob servers, specify \verb!biorobcn1! as the master, for
 lsl218, specify \verb!lsllinux! (you can specify which master to use for
 optirunner using the \verb!-m! option).
+
+\subsection{Common pitfalls}
+A common pitfall is wrong versions or architectures of binaries and shared
+libraries, or the unavailability of a shared library. Be sure to check the
+architecture for which your binaries are compiled (32 bits or 64 bits). You
+can do this by issueing the command \verb!file! on your binaries (or shared
+libraries). Furthermore, always check if all the linked libraries can be found
+on the target systems. You can do this using the command \verb!ldd!. This
+command will list all the shared libraries a binary links against, and should
+tell you whether some of them could not be found. You can login to
+\verb!biorobcn1! or \verb!lsl218pc1! to test whether or not everything can
+be found correctly. Be aware though, your login environment might not be the
+same as the environment in which the job is executed (be sure to check for
+custom libraries that they can also be found when running the job!).
+
+Note for \textbf{Webots} jobs: be sure to check \textbf{all} your controllers
+and your possible plugin. ldd will always report libController.so and
+libCppController.so to not be found, but this is normal since they will be
+linked correctly by webots.
 
 \section{Examples}
 You can find a simple optimization example on the biorob website:

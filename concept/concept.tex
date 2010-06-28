@@ -6,8 +6,6 @@
 \usepackage{listings}
 \usepackage{color}
 
-\usepackage[hyper]{apacite}
-
 \definecolor{bwgreen}{rgb}{0, 0.3, 0}
 \definecolor{bwblue}{rgb}{0, 0, 0.9}
 
@@ -31,6 +29,8 @@ showstringspaces=false
 }
 
 \linespread{1.5}
+\usepackage{apacite}
+
 \begin{document}
 
 \maketitle
@@ -505,7 +505,7 @@ optimization algorithm.
 \begin{table}[h!tb]\caption{PSO Settings}\label{tab:pso_settings}\vspace{0.1in}
 	\centering
 
-	\begin{tabular}{p{4cm} p{10cm}}
+	\begin{tabular}{p{4cm} p{12cm}}
 		\toprule
 		\textbf{Name} & \textbf{Description} \\
 		\midrule
@@ -566,7 +566,7 @@ more information on the available settings, see \citeA{monson_ad_2006}.
 \begin{table}[h!tb]\caption{ADPSO Settings}\label{tab:adpso_settings}\vspace{0.1in}
 	\centering
 
-	\begin{tabular}{p{4cm} p{10cm}}
+	\begin{tabular}{p{4cm} p{12cm}}
 		\toprule
 		\textbf{Name} & \textbf{Description} \\
 		\midrule
@@ -603,7 +603,7 @@ Table \ref{tab:spsa_settings} lists the settings available for this optimizer.
 \begin{table}[h!tb]\caption{SPSA Settings}\label{tab:spsa_settings}\vspace{0.1in}
 	\centering
 
-	\begin{tabular}{p{4cm} p{10cm}}
+	\begin{tabular}{p{4cm} p{12cm}}
 		\toprule
 		\textbf{Name} & \textbf{Description} \\
 		\midrule
@@ -618,6 +618,10 @@ Table \ref{tab:spsa_settings} lists the settings available for this optimizer.
 		                             can use a mathematical expression for this
 		                             setting and use the variable $k$ to
 		                             indicate the current iteration number \\
+		\textit{epsilon} & The normalized maximum parameter step size. You
+		                    can use a mathematical expression for this
+		                    setting and use the variable $k$ to indicate the
+		                    current iteration number \\
 		\bottomrule
 	\end{tabular}
 \end{table}
@@ -630,7 +634,7 @@ for this optimizer.
 \begin{table}[h!tb]\caption{GA Settings}\label{tab:ga_settings}\vspace{0.1in}
 	\centering
 
-	\begin{tabular}{p{4cm} p{10cm}}
+	\begin{tabular}{p{4cm} p{12cm}}
 		\toprule
 		\textbf{Name} & \textbf{Description} \\
 		\midrule
@@ -752,7 +756,7 @@ The world files will be automatically removed after the task has been run.
 \begin{table}[h!tb]\caption{Webots Dispatcher Settings}\label{tab:webots_settings}\vspace{0.1in}
 	\centering
 
-	\begin{tabular}{p{3cm} p{10cm}}
+	\begin{tabular}{p{3cm} p{12cm}}
 		\toprule
 		\textbf{Name} & \textbf{Description} \\
 		\midrule
@@ -772,7 +776,86 @@ The world files will be automatically removed after the task has been run.
 		              to set in the environment in which to execute webots
 		              (optional) \\
 		\textit{worldBuilderPath} & Path to the world builder to use to build to world
-		                   before executing webots (optional)
+		                   before executing webots (optional) \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsection{External}
+The external dispatcher can be used to launch external processes that will
+handle the dispatch request. This can be seen as a very general dispatcher that
+abstract some parts of the optimization framework so that it becomes easier
+to write custom dispatchers. One example of using the external dispatcher is
+to evaluate a job in MATLAB. See table \ref{tab:external_settings} for
+the dispatcher settings.
+
+\begin{table}[h!tb]\caption{External Dispatcher Settings}\label{tab:external_settings}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{3cm} p{12cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{path} & Path to the executable to use for evaluating the task \\
+		\textit{arguments} & Arguments to provide to the executable \\
+		\textit{working-directory} & The working directory in which to execute
+		                             the external process \\
+		\textit{mode} & The mode in which to describe and receive the task
+		                description. Can be either \verb!protobuf! or
+		                \verb!text!. The \verb!protobuf! mode will send protobuf
+		                encoded messages, just as through the rest of the
+		                framework. The \verb!text! mode will send tasks
+		                encoded in a simple text format. The default is
+		                \verb!protobuf! (optional)\\
+		\textit{environment} & Comma separated list of key=value environment variables
+		              to set in the environment in which to execute webots
+		              (optional) \\
+		\textit{persistent} & Optional argument indicating the TCP port number
+		                      to connect to to dispatch the task. You can use
+		                      this if starting the environment in which you
+		                      evaluate a task is expensive. If this is specified,
+		                      the executable will be started the first time, and
+		                      given the environment variable
+		                      \verb!OPTIMIZATION_EXTERNAL_PERSISTENT!, which
+		                      contains the port number on which the external
+		                      process should listen for tasks. \\
+		\textit{startup-delay} & Specifies the number of seconds after which a
+		                         connection should be established when the
+		                         persistent executable is first launched (only
+		                         relevant for persistent mode, optional) \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\subsection{Blender}
+The blender dispatcher can be used to distribute blender animation tasks. Each
+blender process will render a single frame and write it somewhere to disk.
+You can then later assemble all the single frames in a movie. Settings
+for this dispatcher are displayed in table \ref{tab:blender_settings}. The
+dispatcher requires one parameter named ``frame'' which indicates the frame
+number to be rendered. Use the ``systematic search`` optimizer to generate
+the frame numbers (using a step of 1).
+
+\begin{table}[h!tb]\caption{Blender Dispatcher Settings}\label{tab:blender_settings}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{3cm} p{13cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{blender-file} & The blender file to render a frame of \\
+		\textit{scene} & The scene name to render a frame from (optional) \\
+		\textit{output-path} & The output directory where frames will be rendered to.
+		                       By default, the output directory is set to the
+		                       directory of the blender file. You can start the
+		                       output-path with \verb!//! to indicate
+		                       ``relative to the blender file directory`` (optional) \\
+		\textit{format} & The frame output format. Defaults to PNG (optional) \\
+		\textit{arguments} & Additional arguments that will be appended to the
+		                     generated arguments for blender. (optional) \\
+		\textit{environment} & Comma separated list of key=value environment variables
+		              to set in the environment in which to execute webots
+		              (optional) \\
 		\bottomrule
 	\end{tabular}
 \end{table}

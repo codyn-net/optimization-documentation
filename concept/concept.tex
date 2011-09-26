@@ -29,6 +29,8 @@ showstringspaces=false
 }
 
 \linespread{1.5}
+\setlength{\parindent}{0ex}
+\setlength{\parskip}{2ex}
 \usepackage{apacite}
 
 \begin{document}
@@ -287,6 +289,7 @@ optirunner is given.
 The XML description of a job consists of a few distinct sections. The basic
 element is \verb!job!:
 
+\vbox{
 \begin{lstlisting}[language=xml]
 <?xml version="1.0" encoding="UTF-8" ?>
 
@@ -297,12 +300,13 @@ element is \verb!job!:
   <!-- Rest -->
 </job>
 \end{lstlisting}
+}
 
 A job should always have a name. The name is used to generate the file name
 in which results are written. The priority, timeout and token elements are optional
 and specify respectively the priority level at which you want to run your job
 (defaults to 1), a timeout indicating the maximum allowed time for a task
-to run and a token representing a unique identifier of the job (see also \ref{sec:running}).
+to run and a token representing a unique identifier of the job (see also section \ref{sec:tokens}).
 The timeout is a fail-safe for the master so that it can discard tasks
 that are running too long (for example if you have to make use of third party
 software that is buggy). The remainder of the job description consists of
@@ -313,37 +317,38 @@ The \verb!optimizer! element describes the type of optimization algorithm to
 use and any settings that correspond to that particular optimization algorithm.
 For example:
 
+\vbox{
 \begin{lstlisting}[language=xml]
   <optimizer name="{NAME}">
-    <setting name="{SETTING 1}">{VALUE}</setting>
-    <setting name="{SETTING 2}">{VALUE}</setting>
+    <setting name="{SETTING 1}">{VAL}</setting>
+    <setting name="{SETTING 2}">{VAL}</setting>
   </optimizer>
 \end{lstlisting}
+}
 
 The name attribute identifies the optimization algorithm (for example 'pso').
-The settings set settings specific to the optimization algorithm. When you use
-\textit{pso}, these settings include the maximum allowed particle velocity
-and different coefficients used in the algorithm. There are two settings
-available for all algorithms: max-iterations and population-size, respectively
-setting the maximum number of iterations to run and the size of the solution
-population. Although these setting are common to most optimization algorithms,
-they might not apply to all. See optimization algorithm specific documentation
-for information on their specific settings.
+The settings set settings specific to the optimization algorithm. When you
+for example use \textit{PSO}, these settings include the maximum allowed
+particle velocity and different coefficients used in the algorithm. There are
+some settings available for all optimization algorithms, for more information
+see section \ref{sec:optimization}.
 
 The \verb!boundaries! element specifies a set of boundary definitions (minimum
 and maximum values) which are used in the \verb!parameters! element. An example
 boundaries definition:
 
+\vbox{
 \begin{lstlisting}[language=xml]
   <optimizer>
     <!-- ... -->
     <boundaries>
-      <boundary name="{BOUNDARY 1}" min="{VALUE}" max="{VALUE}" min-initial="{VALUE}" max-initial="{VALUE}"/>
-      <boundary name="{BOUNDARY 2}" min="{VALUE}" max="{VALUE}" min-initial="{VALUE}" max-initial="{VALUE}"/>
+      <boundary name="{BOUND 1}" min="{VAL}" max="{VAL}" min-initial="{VAL}" max-initial="{VAL}"/>
+      <boundary name="{BOUND 2}" min="{VAL}" max="{VAL}" min-initial="{VAL}" max-initial="{VAL}"/>
     </boundaries>
     <!-- ... -->
   </optimizer>
 \end{lstlisting}
+}
 
 Each boundary is named, and has a minimum and a maximum value. The name is
 used in the parameter definition to reference a specific boundary. The
@@ -354,6 +359,7 @@ population should be initialized (for population based algorithms).
 The \verb!parameters! element specifies the set of open parameters to be
 optimized. An example definition:
 
+\vbox{
 \begin{lstlisting}[language=xml]
   <optimizer>
     <!-- ... -->
@@ -364,6 +370,7 @@ optimized. An example definition:
     <!-- ... -->
   </optimizer>
 \end{lstlisting}
+}
 
 Each parameter is named, and specifies by which boundary its value is bound.
 
@@ -371,12 +378,13 @@ In addition to specifying boundaries in a separate section so that they can
 be reused, you can also write boundary values in a more concise and simpler
 format directly in the parameter specification:
 
+\vbox{
 \begin{lstlisting}[language=xml]
   <optimizer>
     <!-- ... -->
     <parameters>
-      <parameter name="{PARAMETER 1}" min="{VALUE}" max="{VALUE}" min-initial="{VALUE}" max-initial="{VALUE}"/>
-      <parameter name="{PARAMETER 2}" min="{VALUE}" max="{VALUE}" min-initial="{VALUE}" max-initial="{VALUE}"/>
+      <parameter name="{PARAM 1}" min="{VAL}" max="{VAL}" min-initial="{VAL}" max-initial="{VAL}"/>
+      <parameter name="{PARAM 2}" min="{VAL}" max="{VAL}" min-initial="{VAL}" max-initial="{VAL}"/>
     </parameters>
     <!-- ... -->
   </optimizer>
@@ -393,6 +401,7 @@ fitness value. As such, you can adjust the way you combine these different
 objectives without having to modify the dispatcher. An example fitness
 description:
 
+\vbox{
 \begin{lstlisting}[language=xml]
   <optimizer>
     <!-- ... -->
@@ -405,6 +414,7 @@ description:
     <!-- ... -->
   </optimizer>
 \end{lstlisting}
+}
 
 The \verb!expression! element in the \verb!fitness! element describes the main
 fitness expression to be evaluated. This expression can be a mathematical
@@ -422,12 +432,14 @@ The \verb!dispatcher! element describes the dispatcher and dispatcher settings
 to be used to evaluate a solution generated by the optimization algorithm. The
 specific settings depend on the type of dispatcher used. An example definition:
 
+\vbox{
 \begin{lstlisting}[language=xml]
   <dispatcher name="{NAME}">
     <setting name="{SETTING 1}">{VALUE}</setting>
     <setting name="{SETTING 2}">{VALUE}</setting>
   </dispatcher>
 \end{lstlisting}
+}
 
 The dispatcher name can be either a simple name, in which case it will be
 looked up in the system directory for optimization dispatchers (this is where
@@ -471,20 +483,58 @@ A full XML job description example:
 </job>
 \end{lstlisting}
 
-\section{Optimization Algorithms}
+\section{Optimization Algorithms}\label{sec:optimization}
 The optimization algorithms currently implemented are:
+Particle Swarm Optimization (PSO), Adaptive Diversity Particle Swarm Optimization (ADPSO),
+Genetic Algorithms (GA), Simultaneous Perturbation Stochastic Approximation (SPSA)
+and Systematic Search (Systematic).
 
-\begin{itemize}
-	\item Particle Swarm Optimization (PSO)
-	\item Adaptive Diversity Particle Swarm Optimization (ADPSO)
-	\item Genetic Algorithms (GA)
-	\item Simultaneous Perturbation Stochastic Approximation (SPSA)
-	\item Systematic Search (Systematic)
-\end{itemize}
-
-These are available from the optimizers-sharp library. When using
+These are available from the \verb!optimizers2-sharp! library. When using
 \verb!optirunner!, you can list the available optimization algorithms and
-their settings using the \verb!-l! command line option.
+their settings using the \verb!--list! command line option. There are a few
+settings common to all optimization algorithms (although some might not apply
+to all algorithms). Table \ref{tab:general_settings} lists these settings.
+
+\begin{table}[h!tb]\caption{Optimization Settings}\label{tab:general_settings}\vspace{0.1in}
+	\centering
+
+	\begin{tabular}{p{4cm} p{12cm}}
+		\toprule
+		\textbf{Name} & \textbf{Description} \\
+		\midrule
+		\textit{population-size} & The population size (applies to
+		                           population based methods and has
+		                           a special meaning for the
+		                           \textit{SPSA} and \textit{Systematic}
+		                           algorithms). \\
+		\textit{max-iterations} & The maximum number of iterations to
+		                          run the optimization (does not apply
+		                          to \textit{Systematic}). \\
+		\textit{convergence-threshold} & If specified, adds an
+		                                 additional stopping criterion
+		                                 which is based on measurement
+		                                 of convergence. If the
+		                                 convergence is below the
+		                                 threshold, the optimization
+		                                 will be stopped. Convergence
+		                                 is measured by:
+			\begin{displaymath}
+				|\max_{i \in W}{f_i(\mathbf{x})} - \min_{i \in W}{f_i(\mathbf{x})}|
+			\end{displaymath}
+
+			Where $W$ is the set of the last
+			\textit{convergence-window} iterations and $f_i(\mathbf{x})$
+			is the best fitness in iteration $i$. \\
+		\textit{convergence-window} & The window (iterations) over which
+		                              to measure convergence. \\
+		\textit{min-iterations} & The minimum number of iterations to
+		                          run before the convergence stopping
+		                          criterion is used. \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Each of the available algorithms and their settings will be briefly described.
 
 \subsection{PSO}
 The particle swarm optimization is a very elegant, simple and fairly recent
@@ -578,6 +628,8 @@ more information on the available settings, see \citeA{monson_ad_2006}.
 	\end{tabular}
 \end{table}
 
+\newpage
+
 \subsection{SPSA}
 Simultaneous Perturbation Stochastic Approximation is an efficient,
 popular, stochastic gradient descend method \cite{spall_multivariate_1992}. It
@@ -626,6 +678,8 @@ Table \ref{tab:spsa_settings} lists the settings available for this optimizer.
 	\end{tabular}
 \end{table}
 
+\newpage
+
 \subsection{GA}
 This optimizer implements the well known standard implementation of
 Genetic Algorithms. Table \ref{tab:ga_settings} lists the settings available
@@ -673,6 +727,8 @@ for this optimizer.
 		\bottomrule
 	\end{tabular}
 \end{table}
+
+The GA implementation supports both real valued as discrete valued parameters.
 
 \subsection{Systematic Search}
 The systematic search optimizer is not an optimization algorithm, but instead
@@ -727,10 +783,9 @@ job. It also features the possibility to automatically replay a specific
 solution found during optimization. This is particularly useful in conjunction
 with for instance webots, to quickly view a particular solution.
 
-You can export the database to a more friendly text format which can then be
-processed in other applications (instead of using the SQLite database directly).
-A matlab script to load this text formatted data is included in the install,
-and can be found in \verb!/usr/share/optiextractor/load_opti_db.m!.
+You can export the database to a matlab file which can be directly loaded
+into matlab. Either use the \textit{Export} command from the menu, or use the
+\verb!--export! command line argument.
 
 \section{opticommand}\label{app:opticommand}
 The opticommand application can be used to inspect the optimaster, displaying
@@ -907,7 +962,7 @@ You will need to be a member of the group \verb!pcreboot!. If you
 are not, please contact the biorob system administrator to request group
 membership.
 
-\subsection{Tokens}
+\subsection{Tokens}\label{sec:tokens}
 You will need to generate a token so that the system can authenticate
 your job. Tokens can be generated on \url{http://eniac.epfl.ch/token.php}. Once
 you have a token, you should specify it in the \verb!<token>...</token>! element

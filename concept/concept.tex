@@ -389,6 +389,30 @@ format directly in the parameter specification:
     <!-- ... -->
   </optimizer>
 \end{lstlisting}
+}
+
+The optimization framework currently does not support the concept of vectors
+or arrays for parameters. Some tasks however are more easily defined using
+these concepts (for example, think of weights for a neural network). To
+somewhat ease the specification of such repeated parameters, the following
+syntax (note the \verb!repeat! attribute) can be used:
+
+\vbox{
+\begin{lstlisting}[language=xml]
+  <optimizer>
+    <!-- ... -->
+    <parameters>
+      <parameter name="p" repeat="1-10"/>
+    </parameters>
+    <!-- ... -->
+  </optimizer>
+\end{lstlisting}
+}
+
+This will generate 10 parameters with the names p1 to p10. The specified range
+can only contain simple integers (min and max) and these numbers are simply
+appended to the specified name. All other attributes (min, max, etc.) can still
+be used.
 
 The last element in the optimizer node is the \verb!fitness! element.
 This can be used if you have

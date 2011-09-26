@@ -698,6 +698,17 @@ Table \ref{tab:spsa_settings} lists the settings available for this optimizer.
 		                    can use a mathematical expression for this
 		                    setting and use the variable $k$ to indicate the
 		                    current iteration number \\
+		\textit{boundary-condition} & Indicates how parameter boundaries
+		                              should be handled. There are three
+		                              possible settings: \textit{None}
+		                              (does not contrain the parameter
+		                              space), \textit{StickResult} (only
+		                              constrains the actual solution to
+		                              be within the parameter boundaries)
+		                              and \textit{StickAll} (constrains
+		                              both the actual position and the
+		                              perturbed solutions to be within
+		                              the parameter boundaries). \\
 		\bottomrule
 	\end{tabular}
 \end{table}

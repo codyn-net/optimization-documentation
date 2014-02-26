@@ -297,19 +297,37 @@ element is \verb!job!:
   <priority>{PRIORITY}</priority>
   <timeout>{TIMEOUT}</timeout>
   <token>{TOKEN}</token>
+  <asynchronous-storage/>
   <!-- Rest -->
 </job>
 \end{lstlisting}
 }
 
 A job should always have a name. The name is used to generate the file name
-in which results are written. The priority, timeout and token elements are optional
-and specify respectively the priority level at which you want to run your job
-(defaults to 1), a timeout indicating the maximum allowed time for a task
-to run and a token representing a unique identifier of the job (see also section \ref{sec:tokens}).
-The timeout is a fail-safe for the master so that it can discard tasks
-that are running too long (for example if you have to make use of third party
-software that is buggy). The remainder of the job description consists of
+in which results are written. The \verb!priority!, \verb!timeout!,
+\verb!token! and \verb!asynchronous-storage! elements are all \textit{optional}
+and specify:
+
+\begin{itemize}
+	\item \verb!priority!: the priority level at which you want to run the
+	job. This value defaults to 1 if unspecified. Higher priority jobs get
+	proportionally more time on the cluster (on average).
+	\item \verb!timeout!: timeout indicating the maximum allowed time for
+	a task to run. Note that this is measuring \textit{real time} and is
+	only used as a safety mechanism for badly behaving dispatchers. You
+	almost never have to specify this and is used mostly as a hack to not
+	get jobs stuck in never ending tasks.
+	\item \verb!token!: an authentication token for the job. See also
+	section \ref{sec:tokens} for more information on authentication tokens.
+	\item \verb!asynchronous-storage!: when specified, the SQLite database
+	is written to disk in asynchronous mode. This can result in significantly
+	faster optimizations for tasks that are very shortlived. Note however
+	that using asynchronous storage can lead to data loss in case of
+	unexpected failures (power outage). The default is to use synchronous
+	storage.
+\end{itemize}
+
+The remainder of the job description consists of
 the \verb!optimizer!, \verb!boundaries!, \verb!parameters! and \verb!dispatcher!
 elements defined inside the job element.
 
@@ -993,7 +1011,7 @@ There are several small steps involved in running your job distributed on the
 system.
 
 \subsection{Becoming a Member}
-You will need to be a member of the group \verb!pcreboot!. If you
+You will need to be a member of the group \verb!cnusers!. If you
 are not, please contact the biorob system administrator to request group
 membership.
 
@@ -1006,28 +1024,53 @@ of the job specification.
 \subsection{Running on the biorob servers}
 You will need to make sure that your job can run on the distributed
 systems. If you want to run a job on the biorob servers, you will need to make
-sure that your code is compiled for \textbf{64 bits}, Ubuntu Lucid LTS.
-If needed, you can compile your code on \verb!biorobcn1! which should have all
-the required development files installed.
-
-\subsection{Running on lsl218}
-If you want to run your job in lsl218, you will
-need to compile your code for 32 bits Ubuntu Hardy LTS. To do this, you can
-compile your code on \verb!lsl218pc1!.
+sure that your code is compiled for \textbf{64 bits}, Ubuntu Lucid LTS (12.04).
+If needed, you can compile your code on \verb!biorobcn-gw! which should have all
+the required development files installed. If you need additional development
+files, please ask the biorob systems administrator to install these as per required.
 
 \subsection{Use of custom libraries}
 If you have custom libraries, make sure
 that they are either system wide installed on the distributed systems, or to
-specify \verb!LD_LIBRARY_PATH! in the environment settings of the dispatcher.
+specify \verb!LD_LIBRARY_PATH! in the \verb!environment! settings of the dispatcher.
 Note: The dispatchers will not be executing under your normal login
 environment! This means that if you do anything special in your $\sim$/.bashrc
 (or similar) you will not have the same environment for the job.
 
+It is possible that \verb!LD_LIBRARY_PATH! does not get set properly when specified
+in the \verb!environment! settings of the dispatcher due to security reasons. If
+this is the case, a simple workaround is to create a wrapper script which sets
+\verb!LD_LIBRARY_PATH! and then executes the actual dispatcher. For example,
+to do this for webots, create a script at \verb!~/bin/webots-runner!:
+
+\begin{lstlisting}[language=sh]
+#!/bin/bash
+
+# Add $HOME/.local/lib to LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"
+
+# Execute real webots
+exec /usr/local/bin/webots "$@"
+\end{lstlisting}
+
+And specify \verb!$HOME/bin/webots-runner! in the \verb!webotsPath! dispatcher
+setting of the webots dispatcher (in the job file).
+
 \subsection{Specifying the master}
 Lastly, you need to specify the correct master to run the job on. When running
-the job on the biorob servers, specify \verb!biorobcn1! as the master, for
-lsl218, specify \verb!lsllinux! (you can specify which master to use for
-optirunner using the \verb!-m! option).
+the job on the biorob servers, specify \verb!biorobcn-gw! as the master (you
+can specify which master to use for optirunner using the \verb!-m! option).
+
+\subsection{Local storage}
+When running jobs on the biorob servers, you can make use of local storage
+on each of the server nodes. This local storage is located at \verb!/data/cnusers!
+and is writable for every user in the \verb!cnusers! group. Local storage is
+useful to write result databases when running \verb!optirunner! from
+\verb!biorobcn-gw!. You can use the \verb!-d! flag of \verb!optirunner! to
+indicate where to write result databases. \textbf{Note} that the
+\verb!/data/cnusers! directory is \textbf{not} shared between the nodes. If you
+want to make files available to all nodes, it's therefore necessary to copy
+files to each individual node!
 
 \subsection{Common pitfalls}
 A common pitfall is wrong versions or architectures of binaries and shared
@@ -1038,13 +1081,13 @@ libraries). Furthermore, always check if all the linked libraries can be found
 on the target systems. You can do this using the command \verb!ldd!. This
 command will list all the shared libraries a binary links against, and should
 tell you whether some of them could not be found. You can login to
-\verb!biorobcn1! or \verb!lsl218pc1! to test whether or not everything can
+\verb!biorobcn-gw! to test whether or not everything can
 be found correctly. Be aware though, your login environment might not be the
 same as the environment in which the job is executed (be sure to check for
 custom libraries that they can also be found when running the job!).
 
 Note for \textbf{Webots} jobs: be sure to check \textbf{all} your controllers
-and your possible plugin. ldd will always report libController.so and
+and your possible plugin. \verb!ldd! will always report libController.so and
 libCppController.so to not be found, but this is normal since they will be
 linked correctly by webots.
 
@@ -1054,8 +1097,9 @@ You can find a simple optimization example on the biorob website:
 
 \section{Monitoring Progress}
 You can track job progress of jobs running on the biorob servers at:
-\url{http://biorobcn1.epfl.ch/optiweb}. Alternatively, you can use
-\verb!opticommand! to view the progress of a job.
+\url{http://biorobcn-gw.epfl.ch/}. This website is only available from inside
+EPFL. To access the website outside of EPFL you can use the EPFL VPN.
+Alternatively, you can use \verb!opticommand! to view the progress of a job.
 
 \newpage
 
